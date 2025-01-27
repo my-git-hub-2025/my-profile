@@ -1,4 +1,4 @@
-# Hi, I'm NUR DHANIYAH SYAFIAH BINTI RAMANSA!
+# Hi, I'm Dhaniyah.
 
 I'm a passionate programmer interested in web development technologies like PHP, JavaScript, HTML, CSS, and MySQL. I'm actively learning and expanding my skillset.
 

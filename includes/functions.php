@@ -7,7 +7,7 @@ require_once __DIR__ . '/config.php';
 function ensureDataStore(): void
 {
     if (!is_dir(DATA_DIR)) {
-        mkdir(DATA_DIR, 0775, true);
+        mkdir(DATA_DIR, 0770, true);
     }
 
     if (!file_exists(USERS_FILE)) {
@@ -22,7 +22,7 @@ function h(string $value): string
 
 function sanitizedUsername(string $username): string
 {
-    return strtolower(preg_replace('/[^a-zA-Z0-9_]/', '', $username) ?? '');
+    return strtolower((string) preg_replace('/[^a-zA-Z0-9_]/', '', $username));
 }
 
 function loadUsers(): array

@@ -65,7 +65,11 @@ $skillItems = array_filter(array_map('trim', explode(',', (string) ($data['skill
 
         <section>
             <h3>Skills</h3>
-            <p><?= h(implode(' • ', $skillItems)) ?></p>
+            <ul>
+                <?php foreach ($skillItems as $item): ?>
+                    <li><?= h($item) ?></li>
+                <?php endforeach; ?>
+            </ul>
         </section>
     </div>
 </div>

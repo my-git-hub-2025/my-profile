@@ -8,28 +8,34 @@ requireLogin();
 $username = (string) currentUser();
 $data = loadResumeData($username);
 $message = '';
+$messageType = 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $payload = [
-        'template' => (string) ($_POST['template'] ?? '1'),
-        'full_name' => trim((string) ($_POST['full_name'] ?? '')),
-        'title' => trim((string) ($_POST['title'] ?? '')),
-        'email' => trim((string) ($_POST['email'] ?? '')),
-        'phone' => trim((string) ($_POST['phone'] ?? '')),
-        'summary' => trim((string) ($_POST['summary'] ?? '')),
-        'education' => trim((string) ($_POST['education'] ?? '')),
-        'experience' => trim((string) ($_POST['experience'] ?? '')),
-        'skills' => trim((string) ($_POST['skills'] ?? '')),
-    ];
+    if (isValidCsrfToken($_POST['csrf_token'] ?? null)) {
+        $payload = [
+            'template' => (string) ($_POST['template'] ?? '1'),
+            'full_name' => trim((string) ($_POST['full_name'] ?? '')),
+            'title' => trim((string) ($_POST['title'] ?? '')),
+            'email' => trim((string) ($_POST['email'] ?? '')),
+            'phone' => trim((string) ($_POST['phone'] ?? '')),
+            'summary' => trim((string) ($_POST['summary'] ?? '')),
+            'education' => trim((string) ($_POST['education'] ?? '')),
+            'experience' => trim((string) ($_POST['experience'] ?? '')),
+            'skills' => trim((string) ($_POST['skills'] ?? '')),
+        ];
 
-    $template = (int) $payload['template'];
-    if ($template < 1 || $template > 10) {
-        $payload['template'] = '1';
+        $template = (int) $payload['template'];
+        if ($template < 1 || $template > 10) {
+            $payload['template'] = '1';
+        }
+
+        saveResumeData($username, $payload);
+        $data = loadResumeData($username);
+        $message = 'Resume data saved.';
+    } else {
+        $message = 'Invalid request token. Refresh the page and try again.';
+        $messageType = 'danger';
     }
-
-    saveResumeData($username, $payload);
-    $data = loadResumeData($username);
-    $message = 'Resume data saved.';
 }
 ?>
 <!doctype html>
@@ -55,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="container py-4">
     <?php if ($message !== ''): ?>
-        <div class="alert alert-success"><?= h($message) ?></div>
+        <div class="alert alert-<?= h($messageType) ?>"><?= h($message) ?></div>
     <?php endif; ?>
     <div class="row g-4">
         <div class="col-lg-8">
@@ -63,38 +69,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-body">
                     <h2 class="h5 mb-3">Your Resume Details</h2>
                     <form method="post">
+                        <input type="hidden" name="csrf_token" value="<?= h(csrfToken()) ?>">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Full Name</label>
-                                <input class="form-control" name="full_name" value="<?= h((string) ($data['full_name'] ?? '')) ?>">
+                                <label class="form-label" for="full_name">Full Name</label>
+                                <input id="full_name" class="form-control" name="full_name" value="<?= h((string) ($data['full_name'] ?? '')) ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Job Title</label>
-                                <input class="form-control" name="title" value="<?= h((string) ($data['title'] ?? '')) ?>">
+                                <label class="form-label" for="title">Job Title</label>
+                                <input id="title" class="form-control" name="title" value="<?= h((string) ($data['title'] ?? '')) ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" name="email" value="<?= h((string) ($data['email'] ?? '')) ?>">
+                                <label class="form-label" for="email">Email</label>
+                                <input id="email" type="email" class="form-control" name="email" autocomplete="email" value="<?= h((string) ($data['email'] ?? '')) ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Phone</label>
-                                <input class="form-control" name="phone" value="<?= h((string) ($data['phone'] ?? '')) ?>">
+                                <label class="form-label" for="phone">Phone</label>
+                                <input id="phone" class="form-control" name="phone" value="<?= h((string) ($data['phone'] ?? '')) ?>">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Professional Summary</label>
-                                <textarea class="form-control" name="summary" rows="3"><?= h((string) ($data['summary'] ?? '')) ?></textarea>
+                                <label class="form-label" for="summary">Professional Summary</label>
+                                <textarea id="summary" class="form-control" name="summary" rows="3"><?= h((string) ($data['summary'] ?? '')) ?></textarea>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Education</label>
-                                <textarea class="form-control" name="education" rows="3" placeholder="One item per line"><?= h((string) ($data['education'] ?? '')) ?></textarea>
+                                <label class="form-label" for="education">Education</label>
+                                <textarea id="education" class="form-control" name="education" rows="3" placeholder="One item per line"><?= h((string) ($data['education'] ?? '')) ?></textarea>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Experience</label>
-                                <textarea class="form-control" name="experience" rows="4" placeholder="One item per line"><?= h((string) ($data['experience'] ?? '')) ?></textarea>
+                                <label class="form-label" for="experience">Experience</label>
+                                <textarea id="experience" class="form-control" name="experience" rows="4" placeholder="One item per line"><?= h((string) ($data['experience'] ?? '')) ?></textarea>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Skills</label>
-                                <textarea class="form-control" name="skills" rows="2" placeholder="Comma separated"><?= h((string) ($data['skills'] ?? '')) ?></textarea>
+                                <label class="form-label" for="skills">Skills</label>
+                                <textarea id="skills" class="form-control" name="skills" rows="2" placeholder="Comma separated"><?= h((string) ($data['skills'] ?? '')) ?></textarea>
                             </div>
                         </div>
 

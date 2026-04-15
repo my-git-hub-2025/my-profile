@@ -16,12 +16,16 @@ if (currentUser() !== null) {
 $error = '';
 $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isValidCsrfToken($_POST['csrf_token'] ?? null)) {
+        $error = 'Invalid request token. Please refresh and try again.';
+    }
+
     $username = (string) ($_POST['username'] ?? '');
     $password = (string) ($_POST['password'] ?? '');
 
-    if (registerUser($username, $password)) {
+    if ($error === '' && registerUser($username, $password)) {
         $success = 'Registration successful. You can login now.';
-    } else {
+    } elseif ($error === '') {
         $error = 'Registration failed. Username may exist or password is too short (min 6).';
     }
 }
@@ -49,13 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="alert alert-success"><?= h($success) ?></div>
                     <?php endif; ?>
                     <form method="post">
+                        <input type="hidden" name="csrf_token" value="<?= h(csrfToken()) ?>">
                         <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" name="username" class="form-control" required>
+                            <label class="form-label" for="username">Username</label>
+                            <input id="username" type="text" name="username" class="form-control" autocomplete="username" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" name="password" class="form-control" minlength="6" required>
+                            <label class="form-label" for="password">Password</label>
+                            <input id="password" type="password" name="password" class="form-control" minlength="6" autocomplete="new-password" required>
                         </div>
                         <button class="btn btn-success w-100" type="submit">Create Account</button>
                     </form>

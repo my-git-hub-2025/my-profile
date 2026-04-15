@@ -15,16 +15,22 @@ if (currentUser() !== null) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isValidCsrfToken($_POST['csrf_token'] ?? null)) {
+        $error = 'Invalid request token. Please refresh and try again.';
+    }
+
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
 
-    if (authenticateUser((string) $username, (string) $password)) {
+    if ($error === '' && authenticateUser((string) $username, (string) $password)) {
         $_SESSION['username'] = sanitizedUsername((string) $username);
         header('Location: dashboard.php');
         exit;
     }
 
-    $error = 'Invalid username or password.';
+    if ($error === '') {
+        $error = 'Invalid username or password.';
+    }
 }
 ?>
 <!doctype html>
@@ -47,13 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="alert alert-danger"><?= h($error) ?></div>
                     <?php endif; ?>
                     <form method="post">
+                        <input type="hidden" name="csrf_token" value="<?= h(csrfToken()) ?>">
                         <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" name="username" class="form-control" required>
+                            <label class="form-label" for="username">Username</label>
+                            <input id="username" type="text" name="username" class="form-control" autocomplete="username" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" name="password" class="form-control" required>
+                            <label class="form-label" for="password">Password</label>
+                            <input id="password" type="password" name="password" class="form-control" autocomplete="current-password" required>
                         </div>
                         <button class="btn btn-primary w-100" type="submit">Login</button>
                     </form>

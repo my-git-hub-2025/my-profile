@@ -7,7 +7,7 @@ require_once __DIR__ . '/config.php';
 function ensureDataStore(): void
 {
     if (!is_dir(DATA_DIR)) {
-        mkdir(DATA_DIR, 0770, true);
+        mkdir(DATA_DIR, 0700, true);
     }
 
     if (!file_exists(USERS_FILE)) {
@@ -44,18 +44,43 @@ function loadUsers(): array
 
 function registerUser(string $username, string $password): bool
 {
+    ensureDataStore();
     $username = sanitizedUsername($username);
     if ($username === '' || strlen($password) < 6) {
         return false;
     }
 
-    $users = loadUsers();
+    $handle = fopen(USERS_FILE, 'c+');
+    if ($handle === false) {
+        return false;
+    }
+
+    if (!flock($handle, LOCK_EX)) {
+        fclose($handle);
+        return false;
+    }
+
+    rewind($handle);
+    $users = [];
+    while (($line = fgets($handle)) !== false) {
+        [$existingUsername, $passwordHash] = array_pad(explode('|', trim($line), 2), 2, '');
+        if ($existingUsername !== '' && $passwordHash !== '') {
+            $users[$existingUsername] = $passwordHash;
+        }
+    }
+
     if (isset($users[$username])) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
         return false;
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    file_put_contents(USERS_FILE, $username . '|' . $hash . PHP_EOL, FILE_APPEND | LOCK_EX);
+    fseek($handle, 0, SEEK_END);
+    fwrite($handle, $username . '|' . $hash . PHP_EOL);
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
 
     $defaultData = [
         'template' => '1',
@@ -149,4 +174,22 @@ function requireLogin(): void
 function templateName(string $id): string
 {
     return 'Template ' . $id;
+}
+
+function csrfToken(): string
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function isValidCsrfToken(?string $token): bool
+{
+    return hash_equals(csrfToken(), (string) $token);
 }

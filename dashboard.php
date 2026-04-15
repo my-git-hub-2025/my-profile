@@ -9,6 +9,7 @@ $username = (string) currentUser();
 $data = loadResumeData($username);
 $message = '';
 $messageType = 'success';
+$downloadToken = csrfToken();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isValidCsrfToken($_POST['csrf_token'] ?? null)) {
@@ -69,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-body">
                     <h2 class="h5 mb-3">Your Resume Details</h2>
                     <form method="post">
-                        <input type="hidden" name="csrf_token" value="<?= h(csrfToken()) ?>">
+                        <input type="hidden" name="csrf_token" value="<?= h($downloadToken) ?>">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label" for="full_name">Full Name</label>
@@ -110,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php for ($i = 1; $i <= 10; $i++): ?>
                                 <div class="col-6 col-md-4 col-lg-3">
                                     <label class="template-option card p-2">
-                                        <input class="form-check-input me-2" type="radio" name="template" value="<?= $i ?>" <?= ((string) ($data['template'] ?? '1') === (string) $i) ? 'checked' : '' ?>>
+                                        <input class="form-check-input me-2" type="radio" name="template" value="<?= $i ?>" <?= ((int) ($data['template'] ?? 1) === $i) ? 'checked' : '' ?>>
                                         <?= h(templateName((string) $i)) ?>
                                     </label>
                                 </div>
@@ -120,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="mt-4 d-flex flex-wrap gap-2">
                             <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save</button>
                             <a class="btn btn-outline-secondary" target="_blank" href="preview.php"><i class="fa-solid fa-eye"></i> Preview</a>
-                            <a class="btn btn-outline-success" target="_blank" href="download.php"><i class="fa-solid fa-file-pdf"></i> Download PDF</a>
+                            <a class="btn btn-outline-success" target="_blank" href="download.php?token=<?= urlencode($downloadToken) ?>"><i class="fa-solid fa-file-pdf"></i> Download PDF</a>
                         </div>
                     </form>
                 </div>

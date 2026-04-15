@@ -12,6 +12,7 @@ function ensureDataStore(): void
 
     if (!file_exists(USERS_FILE)) {
         file_put_contents(USERS_FILE, "");
+        chmod(USERS_FILE, 0600);
     }
 }
 
@@ -113,23 +114,29 @@ function userDataPath(string $username): string
 
 function loadResumeData(string $username): array
 {
+    $defaults = [
+        'template' => '1',
+        'full_name' => '',
+        'title' => '',
+        'email' => '',
+        'phone' => '',
+        'summary' => '',
+        'education' => '',
+        'experience' => '',
+        'skills' => '',
+    ];
+
     $file = userDataPath($username);
     if (!file_exists($file)) {
-        return [
-            'template' => '1',
-            'full_name' => '',
-            'title' => '',
-            'email' => '',
-            'phone' => '',
-            'summary' => '',
-            'education' => '',
-            'experience' => '',
-            'skills' => '',
-        ];
+        return $defaults;
     }
 
     $data = json_decode((string) file_get_contents($file), true);
-    return is_array($data) ? $data : [];
+    if (!is_array($data)) {
+        return $defaults;
+    }
+
+    return array_merge($defaults, $data);
 }
 
 function saveResumeData(string $username, array $data): bool
@@ -150,7 +157,12 @@ function saveResumeData(string $username, array $data): bool
     ];
 
     $payload = array_merge($defaults, $data);
-    return false !== file_put_contents($file, json_encode($payload, JSON_PRETTY_PRINT), LOCK_EX);
+    $saved = false !== file_put_contents($file, json_encode($payload, JSON_PRETTY_PRINT), LOCK_EX);
+    if ($saved) {
+        chmod($file, 0600);
+    }
+
+    return $saved;
 }
 
 function currentUser(): ?string
@@ -191,5 +203,9 @@ function csrfToken(): string
 
 function isValidCsrfToken(?string $token): bool
 {
-    return hash_equals(csrfToken(), (string) $token);
+    if ($token === null) {
+        return false;
+    }
+
+    return hash_equals(csrfToken(), $token);
 }

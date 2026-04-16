@@ -166,7 +166,7 @@ function authenticateUser(string $username, string $password): bool
     $users = loadUserAccounts();
 
     return isset($users[$username])
-        && (($users[$username]['status'] ?? 'active') !== 'suspended')
+        && !isUserSuspended($username, $users)
         && password_verify($password, $users[$username]['password_hash']);
 }
 
@@ -247,11 +247,21 @@ function requireLogin(): void
     }
 
     $users = loadUserAccounts();
-    if (!isset($users[$username]) || (($users[$username]['status'] ?? 'active') === 'suspended')) {
+    if (!isset($users[$username]) || isUserSuspended($username, $users)) {
         $_SESSION = [];
         header('Location: login.php?error=account_inactive');
         exit;
     }
+}
+
+function isUserSuspended(string $username, ?array $users = null): bool
+{
+    $username = sanitizedUsername($username);
+    if ($users === null) {
+        $users = loadUserAccounts();
+    }
+
+    return isset($users[$username]) && (($users[$username]['status'] ?? 'active') === 'suspended');
 }
 
 function currentUserRole(): string
@@ -309,15 +319,20 @@ function updateUserAccount(string $originalUsername, string $newUsername, string
         return false;
     }
 
-    if ($users[$originalUsername]['role'] === 'admin' && $role !== 'admin') {
-        $adminCount = 0;
-        foreach ($users as $user) {
-            if (($user['role'] ?? 'user') === 'admin') {
-                $adminCount++;
+    if ($users[$originalUsername]['role'] === 'admin' && ($role !== 'admin' || $status === 'suspended')) {
+        $otherActiveAdminExists = false;
+        foreach ($users as $username => $user) {
+            if ($username === $originalUsername) {
+                continue;
+            }
+
+            if (($user['role'] ?? 'user') === 'admin' && (($user['status'] ?? 'active') !== 'suspended')) {
+                $otherActiveAdminExists = true;
+                break;
             }
         }
 
-        if ($adminCount <= 1) {
+        if (!$otherActiveAdminExists) {
             return false;
         }
     }

@@ -14,6 +14,10 @@ if (currentUser() !== null) {
 }
 
 $error = '';
+if (($_GET['error'] ?? '') === 'account_inactive') {
+    $error = 'Your account is unavailable. Contact an admin.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isValidCsrfToken($_POST['csrf_token'] ?? null)) {
         $error = 'Invalid request token. Please refresh and try again.';

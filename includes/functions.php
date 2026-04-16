@@ -419,7 +419,8 @@ function deleteUserAccount(string $username): bool
         return false;
     }
 
-    if (sanitizedUsername((string) currentUser()) === $username) {
+    $currentUsername = currentUser();
+    if ($currentUsername !== null && sanitizedUsername($currentUsername) === $username) {
         return false;
     }
 

@@ -54,6 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
         <span class="navbar-brand"><i class="fa-solid fa-file-lines"></i> Resume Creator</span>
         <div class="ms-auto">
+            <?php if (isAdmin()): ?>
+                <a href="admin_users.php" class="btn btn-sm btn-outline-light me-2">Manage Users</a>
+            <?php endif; ?>
             <span class="text-white me-3">Hi, <?= h($username) ?></span>
             <a href="logout.php" class="btn btn-sm btn-outline-light">Logout</a>
         </div>

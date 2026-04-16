@@ -29,18 +29,19 @@ function sanitizedUsername(string $username): string
 function parseUserRecord(string $line): array
 {
     $line = trim($line);
-    if (substr_count($line, '|') > 2) {
-        return ['', '', ''];
+    if (substr_count($line, '|') > 3) {
+        return ['', '', 'user', 'active'];
     }
 
-    [$username, $passwordHash, $role] = array_pad(explode('|', $line, 3), 3, '');
+    [$username, $passwordHash, $role, $status] = array_pad(explode('|', $line, 4), 4, '');
     if ($username === '' || $passwordHash === '') {
-        return ['', '', ''];
+        return ['', '', 'user', 'active'];
     }
 
     $role = $role === 'admin' ? 'admin' : 'user';
+    $status = $status === 'suspended' ? 'suspended' : 'active';
 
-    return [$username, $passwordHash, $role];
+    return [$username, $passwordHash, $role, $status];
 }
 
 function loadUserAccounts(): array
@@ -51,16 +52,50 @@ function loadUserAccounts(): array
     $lines = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
     foreach ($lines as $line) {
-        [$username, $passwordHash, $role] = parseUserRecord($line);
+        [$username, $passwordHash, $role, $status] = parseUserRecord($line);
         if ($username !== '' && $passwordHash !== '') {
             $accounts[$username] = [
                 'password_hash' => $passwordHash,
                 'role' => $role,
+                'status' => $status,
             ];
         }
     }
 
     return $accounts;
+}
+
+function saveUserAccounts(array $users): bool
+{
+    ensureDataStore();
+    $handle = fopen(USERS_FILE, 'c+');
+    if ($handle === false) {
+        return false;
+    }
+
+    if (!flock($handle, LOCK_EX)) {
+        fclose($handle);
+        return false;
+    }
+
+    ftruncate($handle, 0);
+    rewind($handle);
+    foreach ($users as $username => $account) {
+        $role = (($account['role'] ?? 'user') === 'admin') ? 'admin' : 'user';
+        $status = (($account['status'] ?? 'active') === 'suspended') ? 'suspended' : 'active';
+        $passwordHash = (string) ($account['password_hash'] ?? '');
+        if ($username === '' || $passwordHash === '') {
+            continue;
+        }
+
+        fwrite($handle, $username . '|' . $passwordHash . '|' . $role . '|' . $status . PHP_EOL);
+    }
+
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    return true;
 }
 
 function registerUser(string $username, string $password): bool
@@ -84,11 +119,12 @@ function registerUser(string $username, string $password): bool
     rewind($handle);
     $users = [];
     while (($line = fgets($handle)) !== false) {
-        [$existingUsername, $passwordHash, $role] = parseUserRecord($line);
+        [$existingUsername, $passwordHash, $role, $status] = parseUserRecord($line);
         if ($existingUsername !== '' && $passwordHash !== '') {
             $users[$existingUsername] = [
                 'password_hash' => $passwordHash,
                 'role' => $role,
+                'status' => $status,
             ];
         }
     }
@@ -101,8 +137,9 @@ function registerUser(string $username, string $password): bool
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
     $role = count($users) === 0 ? 'admin' : 'user';
+    $status = 'active';
     fseek($handle, 0, SEEK_END);
-    fwrite($handle, $username . '|' . $hash . '|' . $role . PHP_EOL);
+    fwrite($handle, $username . '|' . $hash . '|' . $role . '|' . $status . PHP_EOL);
     fflush($handle);
     flock($handle, LOCK_UN);
     fclose($handle);
@@ -128,7 +165,9 @@ function authenticateUser(string $username, string $password): bool
     $username = sanitizedUsername($username);
     $users = loadUserAccounts();
 
-    return isset($users[$username]) && password_verify($password, $users[$username]['password_hash']);
+    return isset($users[$username])
+        && (($users[$username]['status'] ?? 'active') !== 'suspended')
+        && password_verify($password, $users[$username]['password_hash']);
 }
 
 function userDataPath(string $username): string
@@ -201,10 +240,112 @@ function currentUser(): ?string
 
 function requireLogin(): void
 {
-    if (currentUser() === null) {
+    $username = currentUser();
+    if ($username === null) {
         header('Location: login.php');
         exit;
     }
+
+    $users = loadUserAccounts();
+    if (!isset($users[$username]) || (($users[$username]['status'] ?? 'active') === 'suspended')) {
+        $_SESSION = [];
+        header('Location: login.php?error=account_inactive');
+        exit;
+    }
+}
+
+function currentUserRole(): string
+{
+    $username = currentUser();
+    if ($username === null) {
+        return 'user';
+    }
+
+    $users = loadUserAccounts();
+    if (!isset($users[$username])) {
+        return 'user';
+    }
+
+    return (($users[$username]['role'] ?? 'user') === 'admin') ? 'admin' : 'user';
+}
+
+function isAdmin(?string $username = null): bool
+{
+    if ($username === null) {
+        return currentUserRole() === 'admin';
+    }
+
+    $username = sanitizedUsername($username);
+    $users = loadUserAccounts();
+    return isset($users[$username]) && (($users[$username]['role'] ?? 'user') === 'admin');
+}
+
+function requireAdmin(): void
+{
+    requireLogin();
+    if (!isAdmin()) {
+        header('Location: dashboard.php');
+        exit;
+    }
+}
+
+function updateUserAccount(string $originalUsername, string $newUsername, string $role, string $status): bool
+{
+    $originalUsername = sanitizedUsername($originalUsername);
+    $newUsername = sanitizedUsername($newUsername);
+    $role = $role === 'admin' ? 'admin' : 'user';
+    $status = $status === 'suspended' ? 'suspended' : 'active';
+
+    if ($originalUsername === '' || $newUsername === '') {
+        return false;
+    }
+
+    $users = loadUserAccounts();
+    if (!isset($users[$originalUsername])) {
+        return false;
+    }
+
+    if ($originalUsername !== $newUsername && isset($users[$newUsername])) {
+        return false;
+    }
+
+    if ($users[$originalUsername]['role'] === 'admin' && $role !== 'admin') {
+        $adminCount = 0;
+        foreach ($users as $user) {
+            if (($user['role'] ?? 'user') === 'admin') {
+                $adminCount++;
+            }
+        }
+
+        if ($adminCount <= 1) {
+            return false;
+        }
+    }
+
+    $account = $users[$originalUsername];
+    $account['role'] = $role;
+    $account['status'] = $status;
+
+    if ($originalUsername !== $newUsername) {
+        unset($users[$originalUsername]);
+        $users[$newUsername] = $account;
+    } else {
+        $users[$originalUsername] = $account;
+    }
+
+    if (!saveUserAccounts($users)) {
+        return false;
+    }
+
+    if ($originalUsername !== $newUsername) {
+        $oldDataFile = userDataPath($originalUsername);
+        $newDataFile = userDataPath($newUsername);
+        if (file_exists($oldDataFile) && !file_exists($newDataFile)) {
+            rename($oldDataFile, $newDataFile);
+        }
+    }
+
+    return true;
 }
 
 function templateName(string $id): string

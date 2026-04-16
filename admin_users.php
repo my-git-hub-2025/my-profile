@@ -78,29 +78,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </thead>
             <tbody>
             <?php foreach ($accounts as $username => $account): ?>
+                <?php $formId = 'user-form-' . preg_replace('/[^a-z0-9_]/', '', strtolower((string) $username)); ?>
                 <tr>
-                    <form method="post">
-                        <td>
+                    <td>
+                        <form method="post" id="<?= h($formId) ?>">
                             <input type="hidden" name="csrf_token" value="<?= h(csrfToken()) ?>">
                             <input type="hidden" name="original_username" value="<?= h((string) $username) ?>">
-                            <input type="text" class="form-control" name="username" value="<?= h((string) $username) ?>" required>
-                        </td>
-                        <td>
-                            <select class="form-select" name="role">
-                                <option value="user" <?= (($account['role'] ?? 'user') === 'user') ? 'selected' : '' ?>>User</option>
-                                <option value="admin" <?= (($account['role'] ?? 'user') === 'admin') ? 'selected' : '' ?>>Admin</option>
-                            </select>
-                        </td>
-                        <td>
-                            <select class="form-select" name="status">
-                                <option value="active" <?= (($account['status'] ?? 'active') === 'active') ? 'selected' : '' ?>>Active</option>
-                                <option value="suspended" <?= (($account['status'] ?? 'active') === 'suspended') ? 'selected' : '' ?>>Suspended</option>
-                            </select>
-                        </td>
-                        <td class="text-end">
-                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                        </td>
-                    </form>
+                        </form>
+                        <input type="text" class="form-control" name="username" form="<?= h($formId) ?>" value="<?= h((string) $username) ?>" required>
+                    </td>
+                    <td>
+                        <select class="form-select" name="role" form="<?= h($formId) ?>">
+                            <option value="user" <?= (($account['role'] ?? 'user') === 'user') ? 'selected' : '' ?>>User</option>
+                            <option value="admin" <?= (($account['role'] ?? 'user') === 'admin') ? 'selected' : '' ?>>Admin</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select" name="status" form="<?= h($formId) ?>">
+                            <option value="active" <?= (($account['status'] ?? 'active') === 'active') ? 'selected' : '' ?>>Active</option>
+                            <option value="suspended" <?= (($account['status'] ?? 'active') === 'suspended') ? 'selected' : '' ?>>Suspended</option>
+                        </select>
+                    </td>
+                    <td class="text-end">
+                        <button type="submit" class="btn btn-sm btn-primary" form="<?= h($formId) ?>">Save</button>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

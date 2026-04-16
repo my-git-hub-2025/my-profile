@@ -26,21 +26,41 @@ function sanitizedUsername(string $username): string
     return strtolower((string) preg_replace('/[^a-zA-Z0-9_]/', '', $username));
 }
 
-function loadUsers(): array
+function parseUserRecord(string $line): array
+{
+    $line = trim($line);
+    if (substr_count($line, '|') > 2) {
+        return ['', '', ''];
+    }
+
+    [$username, $passwordHash, $role] = array_pad(explode('|', $line, 3), 3, '');
+    if ($username === '' || $passwordHash === '') {
+        return ['', '', ''];
+    }
+
+    $role = $role === 'admin' ? 'admin' : 'user';
+
+    return [$username, $passwordHash, $role];
+}
+
+function loadUserAccounts(): array
 {
     ensureDataStore();
 
-    $users = [];
+    $accounts = [];
     $lines = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
     foreach ($lines as $line) {
-        [$username, $passwordHash] = array_pad(explode('|', $line, 2), 2, '');
+        [$username, $passwordHash, $role] = parseUserRecord($line);
         if ($username !== '' && $passwordHash !== '') {
-            $users[$username] = $passwordHash;
+            $accounts[$username] = [
+                'password_hash' => $passwordHash,
+                'role' => $role,
+            ];
         }
     }
 
-    return $users;
+    return $accounts;
 }
 
 function registerUser(string $username, string $password): bool
@@ -64,9 +84,12 @@ function registerUser(string $username, string $password): bool
     rewind($handle);
     $users = [];
     while (($line = fgets($handle)) !== false) {
-        [$existingUsername, $passwordHash] = array_pad(explode('|', trim($line), 2), 2, '');
+        [$existingUsername, $passwordHash, $role] = parseUserRecord($line);
         if ($existingUsername !== '' && $passwordHash !== '') {
-            $users[$existingUsername] = $passwordHash;
+            $users[$existingUsername] = [
+                'password_hash' => $passwordHash,
+                'role' => $role,
+            ];
         }
     }
 
@@ -77,8 +100,9 @@ function registerUser(string $username, string $password): bool
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
+    $role = count($users) === 0 ? 'admin' : 'user';
     fseek($handle, 0, SEEK_END);
-    fwrite($handle, $username . '|' . $hash . PHP_EOL);
+    fwrite($handle, $username . '|' . $hash . '|' . $role . PHP_EOL);
     fflush($handle);
     flock($handle, LOCK_UN);
     fclose($handle);
@@ -102,9 +126,9 @@ function registerUser(string $username, string $password): bool
 function authenticateUser(string $username, string $password): bool
 {
     $username = sanitizedUsername($username);
-    $users = loadUsers();
+    $users = loadUserAccounts();
 
-    return isset($users[$username]) && password_verify($password, $users[$username]);
+    return isset($users[$username]) && password_verify($password, $users[$username]['password_hash']);
 }
 
 function userDataPath(string $username): string

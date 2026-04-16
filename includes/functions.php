@@ -249,6 +249,9 @@ function requireLogin(): void
     $users = loadUserAccounts();
     if (!isset($users[$username]) || isUserSuspended($username, $users)) {
         $_SESSION = [];
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
         header('Location: login.php?error=account_inactive');
         exit;
     }
@@ -319,7 +322,7 @@ function updateUserAccount(string $originalUsername, string $newUsername, string
         return false;
     }
 
-    if ($users[$originalUsername]['role'] === 'admin' && ($role !== 'admin' || $status === 'suspended')) {
+    if (($users[$originalUsername]['role'] ?? 'user') === 'admin' && ($role !== 'admin' || $status === 'suspended')) {
         $otherActiveAdminExists = false;
         foreach ($users as $username => $user) {
             if ($username === $originalUsername) {

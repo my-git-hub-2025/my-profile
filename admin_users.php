@@ -77,8 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </tr>
             </thead>
             <tbody>
+            <?php $rowIndex = 0; ?>
             <?php foreach ($accounts as $username => $account): ?>
-                <?php $formId = 'user-form-' . preg_replace('/[^a-z0-9_]/', '', strtolower((string) $username)); ?>
+                <?php $formId = 'user-form-' . $rowIndex; ?>
                 <tr>
                     <td>
                         <form method="post" id="<?= h($formId) ?>">
@@ -103,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="submit" class="btn btn-sm btn-primary" form="<?= h($formId) ?>">Save</button>
                     </td>
                 </tr>
+                <?php $rowIndex++; ?>
             <?php endforeach; ?>
             </tbody>
         </table>

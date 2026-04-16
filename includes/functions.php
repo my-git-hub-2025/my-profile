@@ -26,6 +26,20 @@ function sanitizedUsername(string $username): string
     return strtolower((string) preg_replace('/[^a-zA-Z0-9_]/', '', $username));
 }
 
+function parseUserRecord(string $line): array
+{
+    [$username, $passwordHash, $role] = array_pad(explode('|', trim($line), 3), 3, '');
+    if ($username === '' || $passwordHash === '') {
+        return ['', '', ''];
+    }
+
+    if ($role !== 'admin' && $role !== 'user') {
+        $role = 'user';
+    }
+
+    return [$username, $passwordHash, $role];
+}
+
 function loadUsers(): array
 {
     ensureDataStore();
@@ -34,7 +48,7 @@ function loadUsers(): array
     $lines = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
     foreach ($lines as $line) {
-        [$username, $passwordHash] = array_pad(explode('|', $line, 2), 2, '');
+        [$username, $passwordHash] = parseUserRecord($line);
         if ($username !== '' && $passwordHash !== '') {
             $users[$username] = $passwordHash;
         }
@@ -64,7 +78,7 @@ function registerUser(string $username, string $password): bool
     rewind($handle);
     $users = [];
     while (($line = fgets($handle)) !== false) {
-        [$existingUsername, $passwordHash] = array_pad(explode('|', trim($line), 2), 2, '');
+        [$existingUsername, $passwordHash] = parseUserRecord($line);
         if ($existingUsername !== '' && $passwordHash !== '') {
             $users[$existingUsername] = $passwordHash;
         }
@@ -77,8 +91,9 @@ function registerUser(string $username, string $password): bool
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
+    $role = count($users) === 0 ? 'admin' : 'user';
     fseek($handle, 0, SEEK_END);
-    fwrite($handle, $username . '|' . $hash . PHP_EOL);
+    fwrite($handle, $username . '|' . $hash . '|' . $role . PHP_EOL);
     fflush($handle);
     flock($handle, LOCK_UN);
     fclose($handle);

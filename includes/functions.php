@@ -156,7 +156,12 @@ function registerUser(string $username, string $password): bool
         'skills' => '',
     ];
 
-    saveResumeData($username, $defaultData);
+    if (!saveResumeData($username, $defaultData)) {
+        unset($users[$username]);
+        saveUserAccounts($users);
+        return false;
+    }
+
     return true;
 }
 

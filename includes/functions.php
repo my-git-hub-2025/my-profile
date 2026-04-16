@@ -40,21 +40,24 @@ function parseUserRecord(string $line): array
     return [$username, $passwordHash, $role];
 }
 
-function loadUsers(): array
+function loadUserAccounts(): array
 {
     ensureDataStore();
 
-    $users = [];
+    $accounts = [];
     $lines = file(USERS_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
 
     foreach ($lines as $line) {
-        [$username, $passwordHash] = parseUserRecord($line);
+        [$username, $passwordHash, $role] = parseUserRecord($line);
         if ($username !== '' && $passwordHash !== '') {
-            $users[$username] = $passwordHash;
+            $accounts[$username] = [
+                'password_hash' => $passwordHash,
+                'role' => $role,
+            ];
         }
     }
 
-    return $users;
+    return $accounts;
 }
 
 function registerUser(string $username, string $password): bool
@@ -78,9 +81,12 @@ function registerUser(string $username, string $password): bool
     rewind($handle);
     $users = [];
     while (($line = fgets($handle)) !== false) {
-        [$existingUsername, $passwordHash] = parseUserRecord($line);
+        [$existingUsername, $passwordHash, $role] = parseUserRecord($line);
         if ($existingUsername !== '' && $passwordHash !== '') {
-            $users[$existingUsername] = $passwordHash;
+            $users[$existingUsername] = [
+                'password_hash' => $passwordHash,
+                'role' => $role,
+            ];
         }
     }
 
@@ -117,9 +123,9 @@ function registerUser(string $username, string $password): bool
 function authenticateUser(string $username, string $password): bool
 {
     $username = sanitizedUsername($username);
-    $users = loadUsers();
+    $users = loadUserAccounts();
 
-    return isset($users[$username]) && password_verify($password, $users[$username]);
+    return isset($users[$username]) && password_verify($password, $users[$username]['password_hash']);
 }
 
 function userDataPath(string $username): string

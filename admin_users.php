@@ -146,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php $formId = 'user-form-' . $formIndex; ?>
                 <?php $deleteFormId = 'delete-form-' . $formIndex; ?>
                 <?php $safeUsername = h(sanitizedUsername((string) $username)); ?>
+                <?php $deleteConfirmMessage = htmlspecialchars((string) json_encode('Delete user ' . (string) $username . '?', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8'); ?>
                 <tr>
                     <td>
                         <form method="post" id="<?= h($formId) ?>">
@@ -174,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </td>
                     <td class="text-end">
                         <button type="submit" class="btn btn-sm btn-primary me-2" form="<?= h($formId) ?>">Save</button>
-                        <button type="submit" class="btn btn-sm btn-outline-danger" form="<?= h($deleteFormId) ?>" aria-label="Delete user <?= $safeUsername ?>" onclick="return confirm('Delete user <?= $safeUsername ?>?');">Delete</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" form="<?= h($deleteFormId) ?>" aria-label="Delete user <?= $safeUsername ?>" onclick="return confirm(<?= $deleteConfirmMessage ?>);">Delete</button>
                     </td>
                 </tr>
                 <?php $formIndex++; ?>

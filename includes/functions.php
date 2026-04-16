@@ -160,6 +160,46 @@ function registerUser(string $username, string $password): bool
     return true;
 }
 
+function createUserAccountByAdmin(string $username, string $password, string $role, string $status): bool
+{
+    $username = sanitizedUsername($username);
+    $role = $role === 'admin' ? 'admin' : 'user';
+    $status = $status === 'suspended' ? 'suspended' : 'active';
+    if ($username === '' || strlen($password) < 6) {
+        return false;
+    }
+
+    $users = loadUserAccounts();
+    if (isset($users[$username])) {
+        return false;
+    }
+
+    $users[$username] = [
+        'password_hash' => (string) password_hash($password, PASSWORD_DEFAULT),
+        'role' => $role,
+        'status' => $status,
+    ];
+
+    if (!saveUserAccounts($users)) {
+        return false;
+    }
+
+    $defaultData = [
+        'template' => '1',
+        'full_name' => '',
+        'title' => '',
+        'email' => '',
+        'phone' => '',
+        'summary' => '',
+        'education' => '',
+        'experience' => '',
+        'skills' => '',
+    ];
+
+    saveResumeData($username, $defaultData);
+    return true;
+}
+
 function authenticateUser(string $username, string $password): bool
 {
     $username = sanitizedUsername($username);
@@ -361,6 +401,55 @@ function updateUserAccount(string $originalUsername, string $newUsername, string
         if (file_exists($oldDataFile) && !file_exists($newDataFile)) {
             rename($oldDataFile, $newDataFile);
         }
+    }
+
+    return true;
+}
+
+function deleteUserAccount(string $username): bool
+{
+    $username = sanitizedUsername($username);
+    if ($username === '') {
+        return false;
+    }
+
+    if (sanitizedUsername((string) currentUser()) === $username) {
+        return false;
+    }
+
+    $users = loadUserAccounts();
+    if (!isset($users[$username])) {
+        return false;
+    }
+
+    if (($users[$username]['role'] ?? 'user') === 'admin'
+        && (($users[$username]['status'] ?? 'active') !== 'suspended')
+    ) {
+        $otherActiveAdminExists = false;
+        foreach ($users as $existingUsername => $user) {
+            if ($existingUsername === $username) {
+                continue;
+            }
+
+            if (($user['role'] ?? 'user') === 'admin' && (($user['status'] ?? 'active') !== 'suspended')) {
+                $otherActiveAdminExists = true;
+                break;
+            }
+        }
+
+        if (!$otherActiveAdminExists) {
+            return false;
+        }
+    }
+
+    unset($users[$username]);
+    if (!saveUserAccounts($users)) {
+        return false;
+    }
+
+    $dataFile = userDataPath($username);
+    if (file_exists($dataFile)) {
+        unlink($dataFile);
     }
 
     return true;

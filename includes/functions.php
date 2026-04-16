@@ -33,9 +33,7 @@ function parseUserRecord(string $line): array
         return ['', '', ''];
     }
 
-    if ($role !== 'admin' && $role !== 'user') {
-        $role = 'user';
-    }
+    $role = $role === 'admin' ? 'admin' : 'user';
 
     return [$username, $passwordHash, $role];
 }

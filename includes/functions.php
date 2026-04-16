@@ -201,7 +201,13 @@ function createUserAccountByAdmin(string $username, string $password, string $ro
         'skills' => '',
     ];
 
-    saveResumeData($username, $defaultData);
+    if (!saveResumeData($username, $defaultData)) {
+        $users = loadUserAccounts();
+        unset($users[$username]);
+        saveUserAccounts($users);
+        return false;
+    }
+
     return true;
 }
 

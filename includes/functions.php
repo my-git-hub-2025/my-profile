@@ -28,7 +28,12 @@ function sanitizedUsername(string $username): string
 
 function parseUserRecord(string $line): array
 {
-    [$username, $passwordHash, $role] = array_pad(explode('|', trim($line), 3), 3, '');
+    $line = trim($line);
+    if (substr_count($line, '|') > 2) {
+        return ['', '', ''];
+    }
+
+    [$username, $passwordHash, $role] = array_pad(explode('|', $line, 3), 3, '');
     if ($username === '' || $passwordHash === '') {
         return ['', '', ''];
     }

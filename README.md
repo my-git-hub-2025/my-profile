@@ -10,6 +10,7 @@ This project is a PHP website for creating resumes with:
 ## Features
 
 - User registration and login
+- Admin user management (create, read, update, delete users)
 - Users stored in `data/users/users.txt`
 - Each user has their own TXT data file (`data/users/<username>.txt`)
 - Resume editor dashboard

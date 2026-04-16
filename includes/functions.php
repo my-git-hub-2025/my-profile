@@ -21,6 +21,21 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function defaultResumeData(): array
+{
+    return [
+        'template' => '1',
+        'full_name' => '',
+        'title' => '',
+        'email' => '',
+        'phone' => '',
+        'summary' => '',
+        'education' => '',
+        'experience' => '',
+        'skills' => '',
+    ];
+}
+
 function sanitizedUsername(string $username): string
 {
     return strtolower((string) preg_replace('/[^a-zA-Z0-9_]/', '', $username));
@@ -144,19 +159,50 @@ function registerUser(string $username, string $password): bool
     flock($handle, LOCK_UN);
     fclose($handle);
 
-    $defaultData = [
-        'template' => '1',
-        'full_name' => '',
-        'title' => '',
-        'email' => '',
-        'phone' => '',
-        'summary' => '',
-        'education' => '',
-        'experience' => '',
-        'skills' => '',
+    $defaultData = defaultResumeData();
+
+    if (!saveResumeData($username, $defaultData)) {
+        unset($users[$username]);
+        saveUserAccounts($users);
+        return false;
+    }
+
+    return true;
+}
+
+function createUserAccountByAdmin(string $username, string $password, string $role, string $status): bool
+{
+    $username = sanitizedUsername($username);
+    $role = $role === 'admin' ? 'admin' : 'user';
+    $status = $status === 'suspended' ? 'suspended' : 'active';
+    if ($username === '' || strlen($password) < 6) {
+        return false;
+    }
+
+    $users = loadUserAccounts();
+    if (isset($users[$username])) {
+        return false;
+    }
+
+    $users[$username] = [
+        'password_hash' => (string) password_hash($password, PASSWORD_DEFAULT),
+        'role' => $role,
+        'status' => $status,
     ];
 
-    saveResumeData($username, $defaultData);
+    if (!saveUserAccounts($users)) {
+        return false;
+    }
+
+    $defaultData = defaultResumeData();
+
+    if (!saveResumeData($username, $defaultData)) {
+        $users = loadUserAccounts();
+        unset($users[$username]);
+        saveUserAccounts($users);
+        return false;
+    }
+
     return true;
 }
 
@@ -361,6 +407,56 @@ function updateUserAccount(string $originalUsername, string $newUsername, string
         if (file_exists($oldDataFile) && !file_exists($newDataFile)) {
             rename($oldDataFile, $newDataFile);
         }
+    }
+
+    return true;
+}
+
+function deleteUserAccount(string $username): bool
+{
+    $username = sanitizedUsername($username);
+    if ($username === '') {
+        return false;
+    }
+
+    $currentUsername = currentUser();
+    if ($currentUsername !== null && sanitizedUsername($currentUsername) === $username) {
+        return false;
+    }
+
+    $users = loadUserAccounts();
+    if (!isset($users[$username])) {
+        return false;
+    }
+
+    if (($users[$username]['role'] ?? 'user') === 'admin'
+        && (($users[$username]['status'] ?? 'active') !== 'suspended')
+    ) {
+        $otherActiveAdminExists = false;
+        foreach ($users as $existingUsername => $user) {
+            if ($existingUsername === $username) {
+                continue;
+            }
+
+            if (($user['role'] ?? 'user') === 'admin' && (($user['status'] ?? 'active') !== 'suspended')) {
+                $otherActiveAdminExists = true;
+                break;
+            }
+        }
+
+        if (!$otherActiveAdminExists) {
+            return false;
+        }
+    }
+
+    unset($users[$username]);
+    if (!saveUserAccounts($users)) {
+        return false;
+    }
+
+    $dataFile = userDataPath($username);
+    if (file_exists($dataFile)) {
+        unlink($dataFile);
     }
 
     return true;

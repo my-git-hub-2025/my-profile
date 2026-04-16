@@ -21,6 +21,21 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function defaultResumeData(): array
+{
+    return [
+        'template' => '1',
+        'full_name' => '',
+        'title' => '',
+        'email' => '',
+        'phone' => '',
+        'summary' => '',
+        'education' => '',
+        'experience' => '',
+        'skills' => '',
+    ];
+}
+
 function sanitizedUsername(string $username): string
 {
     return strtolower((string) preg_replace('/[^a-zA-Z0-9_]/', '', $username));
@@ -144,17 +159,7 @@ function registerUser(string $username, string $password): bool
     flock($handle, LOCK_UN);
     fclose($handle);
 
-    $defaultData = [
-        'template' => '1',
-        'full_name' => '',
-        'title' => '',
-        'email' => '',
-        'phone' => '',
-        'summary' => '',
-        'education' => '',
-        'experience' => '',
-        'skills' => '',
-    ];
+    $defaultData = defaultResumeData();
 
     if (!saveResumeData($username, $defaultData)) {
         unset($users[$username]);
@@ -189,17 +194,7 @@ function createUserAccountByAdmin(string $username, string $password, string $ro
         return false;
     }
 
-    $defaultData = [
-        'template' => '1',
-        'full_name' => '',
-        'title' => '',
-        'email' => '',
-        'phone' => '',
-        'summary' => '',
-        'education' => '',
-        'experience' => '',
-        'skills' => '',
-    ];
+    $defaultData = defaultResumeData();
 
     if (!saveResumeData($username, $defaultData)) {
         $users = loadUserAccounts();

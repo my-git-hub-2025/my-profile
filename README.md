@@ -1,16 +1,37 @@
-# Hi, I'm Dhaniyah.
+# Resume Creator (PHP + TXT Database)
 
-I'm a passionate programmer interested in web development technologies like PHP, JavaScript, HTML, CSS, and MySQL. I'm actively learning and expanding my skillset.
+This project is a PHP website for creating resumes with:
 
-**Skills**
+- **Bootstrap 5** UI
+- **jQuery** interactions
+- **Font Awesome** icons
+- File-based storage using **TXT files**
 
-* Programming Languages: PHP, JavaScript (JS)
-* Markup & Styling: HTML, CSS
-* Database: MySQL
+## Features
 
-**Interests**
+- User registration and login
+- Users stored in `data/users/users.txt`
+- Each user has their own TXT data file (`data/users/<username>.txt`)
+- Resume editor dashboard
+- 10 selectable resume templates
+- Resume preview page
+- PDF download via browser print-to-PDF (jQuery triggers print)
 
-* Web Development
-* Machine Learning
+## Run locally
 
-I'm always looking for new challenges and opportunities to learn. Feel free to explore my profile and code!
+From the repository root:
+
+```bash
+php -S localhost:8000
+```
+
+Then open:
+
+- `http://localhost:8000/register.php` to create account
+- `http://localhost:8000/login.php` to login
+
+## Notes
+
+- Passwords are stored securely as hashes.
+- Templates are style variants (`Template 1` to `Template 10`) selectable from the dashboard.
+- Download PDF uses browser native print dialog (`window.print()`).
